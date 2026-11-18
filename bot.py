@@ -1,18 +1,22 @@
 import os
 import json
 import re
+import base64
 from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-# Immune to browser URL-rewriting extensions
-PROTO = "http" + "s:" + "//"
+def d(b64_str):
+    return base64.b64decode(b64_str).decode("utf-8")
 
-# Most Popular & Trusted Amroha District Hindi News Portals
+# Base64 encoded URLs (100% immune to browser extensions)
 AMROHA_SOURCES = [
-    (PROTO + "://livehindustan.com", "Live Hindustan"),
-    (PROTO + "://amarujala.com", "Amar Ujala")
+    (d("aHR0cHM6Ly93d3cubGl2ZWhpbmR1c3Rhbi5jb20vdXR0YXItcHJhZGVzaC9hbXJvaGEvbmV3cw=="), "Live Hindustan"),
+    (d("aHR0cHM6Ly93d3cuYW1hcnVqYWxhLmNvbS91dHRhci1wcmFkZXNoL2Ftcm9oYQ=="), "Amar Ujala")
 ]
+
+TOKEN_ENDPOINT = d("aHR0cHM6Ly9vYXV0aDIuZ29vZ2xlYXBpcy5jb20vdG9rZW4=")
+BLOGGER_BASE = d("aHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vYmxvZ2dlci92My9ibG9ncy8=")
 
 LANG_PATTERN = r'[\u0900-\u097F]'
 HISTORY_FILE = "posted_urls.json"
@@ -37,14 +41,13 @@ def save_history(history):
         json.dump(history[-500:], f, ensure_ascii=False, indent=2)
 
 def get_access_token():
-    url = PROTO + "://googleapis.com"
     data = {
         "client_id": os.environ["CLIENT_ID"].strip(),
         "client_secret": os.environ["CLIENT_SECRET"].strip(),
         "refresh_token": os.environ["REFRESH_TOKEN"].strip(),
         "grant_type": "refresh_token"
     }
-    res = requests.post(url, data=data, timeout=20)
+    res = requests.post(TOKEN_ENDPOINT, data=data, timeout=20)
     if res.status_code != 200:
         print(f"TOKEN ERROR: {res.text}")
     res.raise_for_status()
@@ -133,7 +136,7 @@ def extract_full_article(article_url):
 
 def publish_to_blogger(token, title, html_content, labels):
     blog_id = os.environ["BLOG_ID"].strip()
-    api_url = PROTO + f"://googleapis.com{blog_id}/posts/"
+    api_url = f"{BLOGGER_BASE}{blog_id}/posts/"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
