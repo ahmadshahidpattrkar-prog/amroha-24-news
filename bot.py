@@ -10,8 +10,10 @@ from bs4 import BeautifulSoup
 def d(b64_str):
     return base64.b64decode(b64_str).decode("utf-8")
 
-# 3 Top Verified Amroha District News Portals (Base64 encoded to bypass browser extensions)
+# 5 Most Popular & Trusted Amroha District Hindi News Portals (Base64 encoded)
 AMROHA_SOURCES = [
+    (d("aHR0cHM6Ly93d3cuYmhhc2thci5jb20vbG9jYWwvdXR0YXItcHJhZGVzaC9hbXJvaGEv"), "Dainik Bhaskar"),
+    (d("aHR0cHM6Ly9oaW5kaS5uZXdzMTguY29tL3RhZy9hbXJvaGEtbmV3cy8="), "News18 Hindi"),
     (d("aHR0cHM6Ly93d3cubGl2ZWhpbmR1c3Rhbi5jb20vdXR0YXItcHJhZGVzaC9hbXJvaGEvbmV3cw=="), "Live Hindustan"),
     (d("aHR0cHM6Ly93d3cuYW1hcnVqYWxhLmNvbS91dHRhci1wcmFkZXNoL2Ftcm9oYQ=="), "Amar Ujala"),
     (d("aHR0cHM6Ly93d3cuamFncmFuLmNvbS91dHRhci1wcmFkZXNoL2Ftcm9oYS1jaXR5"), "Dainik Jagran")
@@ -91,10 +93,12 @@ def get_article_links(section_url):
         full_url = urljoin(section_url, href)
         
         if len(txt) > 20 and re.search(LANG_PATTERN, txt):
-            # Matches Live Hindustan (/amroha/), Amar Ujala (/amroha/), and Jagran (/amroha-city-)
-            if any(char.isdigit() for char in full_url) and "/amroha" in full_url.lower():
-                if full_url not in links:
-                    links.append(full_url)
+            # Matches story URLs containing digits and amroha/news paths
+            if any(char.isdigit() for char in full_url) and full_url.startswith("http"):
+                if any(k in full_url.lower() for k in ["/amroha", "/uttar-pradesh/", "/news/"]):
+                    if "/videos/" not in full_url.lower() and "/web-stories/" not in full_url.lower():
+                        if full_url not in links:
+                            links.append(full_url)
     return links[:15]
 
 def extract_full_article(article_url):
@@ -127,7 +131,7 @@ def extract_full_article(article_url):
         "ये भी पढ़ें", "read also", "subscribe", "whatsapp", "telegram",
         "copyright", "all rights reserved", "follow us", "advertisement",
         "cookies", "हिन्दुस्तान अमरोहा ग्रुप", "download app", "विस्तार",
-        "विज्ञापन हटाएं", "को पसंदीदा स्रोत बनाएं"
+        "विज्ञापन हटाएं", "को पसंदीदा स्रोत बनाएं", "दैनिक भास्कर ऐप"
     ]
     for p in soup.find_all("p"):
         txt = p.get_text(" ", strip=True)
@@ -162,9 +166,11 @@ def main():
     history = load_history()
     posted_something = False
 
-    # Shuffle sources so every 2 hours it picks news from a different newspaper
+    # Shuffle all 5 portals on every run for diverse news coverage
     sources = list(AMROHA_SOURCES)
     random.shuffle(sources)
+
+    amroha_filter = ["अमरोहा", "गजरौला", "हसनपुर", "जोया", "नौगावां", "तिगरी", "डिडौली", "amroha", "gajraula", "hasanpur"]
 
     for section_url, source_name in sources:
         if posted_something:
@@ -172,7 +178,7 @@ def main():
         print(f"Scanning: {source_name}")
         try:
             article_links = get_article_links(section_url)
-            print(f"Found {len(article_links)} Amroha story links on {source_name}")
+            print(f"Found {len(article_links)} links on {source_name}")
             for link in article_links:
                 if link in history:
                     continue
@@ -181,6 +187,11 @@ def main():
                 if not title or not re.search(LANG_PATTERN, title) or title in history:
                     continue
                 if not image_url or len(paragraphs) < 2:
+                    continue
+
+                # Ensure article is genuinely related to Amroha district
+                full_text_check = (title + " " + " ".join(paragraphs[:2])).lower()
+                if not any(loc in full_text_check for loc in amroha_filter):
                     continue
 
                 body_html = "".join([f"<p style='font-size:16px; line-height:1.8; margin-bottom:15px;'>{p}</p>" for p in paragraphs])
