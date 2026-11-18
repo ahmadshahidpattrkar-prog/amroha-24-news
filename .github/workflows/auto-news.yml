@@ -1,0 +1,46 @@
+name: Amroha 24 Auto Hindi News
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-news:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install required libraries
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Run Amroha 24 News Bot
+        env:
+          BLOG_ID: ${{ secrets.BLOG_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+        run: |
+          python bot.py
+
+      - name: Keep repository active & save history
+        run: |
+          date -u > keepalive.txt
+          git config --global user.name "Amroha 24 Bot"
+          git config --global user.email "bot@users.noreply.github.com"
+          git add keepalive.txt
+          if [ -f posted_urls.json ]; then
+            git add posted_urls.json
+          fi
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update & keep workflow active" && git push)
