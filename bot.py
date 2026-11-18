@@ -10,13 +10,13 @@ from bs4 import BeautifulSoup
 def d(b64_str):
     return base64.b64decode(b64_str).decode("utf-8")
 
-# 5 Most Popular & Trusted Amroha District Hindi News Portals (Base64 encoded)
-AMROHA_SOURCES = [
-    (d("aHR0cHM6Ly93d3cuYmhhc2thci5jb20vbG9jYWwvdXR0YXItcHJhZGVzaC9hbXJvaGEv"), "Dainik Bhaskar"),
-    (d("aHR0cHM6Ly9oaW5kaS5uZXdzMTguY29tL3RhZy9hbXJvaGEtbmV3cy8="), "News18 Hindi"),
-    (d("aHR0cHM6Ly93d3cubGl2ZWhpbmR1c3Rhbi5jb20vdXR0YXItcHJhZGVzaC9hbXJvaGEvbmV3cw=="), "Live Hindustan"),
-    (d("aHR0cHM6Ly93d3cuYW1hcnVqYWxhLmNvbS91dHRhci1wcmFkZXNoL2Ftcm9oYQ=="), "Amar Ujala"),
-    (d("aHR0cHM6Ly93d3cuamFncmFuLmNvbS91dHRhci1wcmFkZXNoL2Ftcm9oYS1jaXR5"), "Dainik Jagran")
+# 5 Most Popular Uttar Pradesh Hindi News Portals (Base64 encoded to bypass browser extensions)
+UP_SOURCES = [
+    (d("aHR0cHM6Ly93d3cuYmhhc2thci5jb20vbG9jYWwvdXR0YXItcHJhZGVzaC8="), "Dainik Bhaskar"),
+    (d("aHR0cHM6Ly9oaW5kaS5uZXdzMTguY29tL25ld3MvdXR0YXItcHJhZGVzaC8="), "News18 Hindi"),
+    (d("aHR0cHM6Ly93d3cubGl2ZWhpbmR1c3Rhbi5jb20vdXR0YXItcHJhZGVzaC9uZXdz"), "Live Hindustan"),
+    (d("aHR0cHM6Ly93d3cuYW1hcnVqYWxhLmNvbS91dHRhci1wcmFkZXNo"), "Amar Ujala"),
+    (d("aHR0cHM6Ly93d3cuamFncmFuLmNvbS91dHRhci1wcmFkZXNo"), "Dainik Jagran")
 ]
 
 TOKEN_ENDPOINT = d("aHR0cHM6Ly9vYXV0aDIuZ29vZ2xlYXBpcy5jb20vdG9rZW4=")
@@ -59,18 +59,24 @@ def get_access_token():
 
 def detect_labels(title, body):
     text = (title + " " + body).lower()
-    labels = ["Featured", "Amroha", "अमरोहा"]
+    labels = ["Featured", "Uttar Pradesh", "उत्तर प्रदेश"]
     
     keywords = {
-        "Gajraula": ["गजरौला", "gajraula", "तिगरी"],
-        "Hasanpur": ["हसनपुर", "hasanpur"],
-        "Joya": ["जोया", "डिडौली", "joya"],
-        "Naugawan Sadat": ["नौगावां", "naugawan"],
-        "Crime": ["पुलिस", "गिरफ्तार", "चोरी", "हत्या", "मारपीट", "अपराध", "मुकदमा", "कोतवाली"],
-        "Politics": ["विधायक", "सांसद", "मुख्यमंत्री", "भाजपा", "सपा", "कांग्रेस", "बसपा", "चुनाव"],
-        "Administration": ["डीएम", "जिलाधिकारी", "एसपी", "प्रशासन", "तहसील", "नगर पालिका"],
-        "Education": ["स्कूल", "कॉलेज", "छात्र", "छात्रा", "परीक्षा", "शिक्षा"],
-        "Accident": ["हादसा", "टक्कर", "दुर्घटना", "घायल", "मौत"]
+        "Lucknow": ["लखनऊ", "lucknow"],
+        "Noida": ["नोएडा", "ग्रेटर नोएडा", "गौतमबुद्ध नगर", "noida"],
+        "Ghaziabad": ["गाजियाबाद", "ghaziabad"],
+        "Varanasi": ["वाराणसी", "काशी", "बनारस", "varanasi"],
+        "Kanpur": ["कानपुर", "kanpur"],
+        "Agra": ["आगरा", "agra"],
+        "Meerut": ["मेरठ", "meerut"],
+        "Prayagraj": ["प्रयागराज", "इलाहाबाद", "prayagraj"],
+        "Gorakhpur": ["गोरखपुर", "gorakhpur"],
+        "Ayodhya": ["अयोध्या", "ayodhya"],
+        "Amroha": ["अमरोहा", "गजरौला", "amroha"],
+        "Politics": ["मुख्यमंत्री", "योगी", "अखिलेश", "भाजपा", "सपा", "कांग्रेस", "बसपा", "चुनाव", "राजनीति"],
+        "Crime": ["पुलिस", "गिरफ्तार", "चोरी", "हत्या", "अपराध", "मुठभेड़", "एनकाउंटर"],
+        "Education": ["स्कूल", "कॉलेज", "छात्र", "परीक्षा", "शिक्षा", "भर्ती", "यूपी बोर्ड"],
+        "Weather": ["मौसम", "बारिश", "सर्दी", "गर्मी", "कोहरा", "अलर्ट"]
     }
     
     for label, words in keywords.items():
@@ -92,11 +98,10 @@ def get_article_links(section_url):
         txt = a.get_text(" ", strip=True)
         full_url = urljoin(section_url, href)
         
-        if len(txt) > 20 and re.search(LANG_PATTERN, txt):
-            # Matches story URLs containing digits and amroha/news paths
+        if len(txt) > 22 and re.search(LANG_PATTERN, txt):
             if any(char.isdigit() for char in full_url) and full_url.startswith("http"):
-                if any(k in full_url.lower() for k in ["/amroha", "/uttar-pradesh/", "/news/"]):
-                    if "/videos/" not in full_url.lower() and "/web-stories/" not in full_url.lower():
+                if "/uttar-pradesh" in full_url.lower() or "/news/" in full_url.lower():
+                    if not any(x in full_url.lower() for x in ["/videos/", "/web-stories/", "/photos/", "/live-tv/"]):
                         if full_url not in links:
                             links.append(full_url)
     return links[:15]
@@ -117,7 +122,7 @@ def extract_full_article(article_url):
         if og_title and og_title.get("content"):
             title = og_title["content"].strip()
 
-    title = re.sub(r'^Amroha News:\s*', '', title, flags=re.IGNORECASE).strip()
+    title = re.sub(r'^(UP News|Uttar Pradesh News):\s*', '', title, flags=re.IGNORECASE).strip()
 
     image_url = ""
     og_img = soup.find("meta", property="og:image")
@@ -130,8 +135,8 @@ def extract_full_article(article_url):
     junk_phrases = [
         "ये भी पढ़ें", "read also", "subscribe", "whatsapp", "telegram",
         "copyright", "all rights reserved", "follow us", "advertisement",
-        "cookies", "हिन्दुस्तान अमरोहा ग्रुप", "download app", "विस्तार",
-        "विज्ञापन हटाएं", "को पसंदीदा स्रोत बनाएं", "दैनिक भास्कर ऐप"
+        "cookies", "download app", "विस्तार", "विज्ञापन हटाएं",
+        "को पसंदीदा स्रोत बनाएं", "दैनिक भास्कर ऐप"
     ]
     for p in soup.find_all("p"):
         txt = p.get_text(" ", strip=True)
@@ -166,11 +171,9 @@ def main():
     history = load_history()
     posted_something = False
 
-    # Shuffle all 5 portals on every run for diverse news coverage
-    sources = list(AMROHA_SOURCES)
+    # Shuffle all 5 UP portals on every run
+    sources = list(UP_SOURCES)
     random.shuffle(sources)
-
-    amroha_filter = ["अमरोहा", "गजरौला", "हसनपुर", "जोया", "नौगावां", "तिगरी", "डिडौली", "amroha", "gajraula", "hasanpur"]
 
     for section_url, source_name in sources:
         if posted_something:
@@ -178,7 +181,7 @@ def main():
         print(f"Scanning: {source_name}")
         try:
             article_links = get_article_links(section_url)
-            print(f"Found {len(article_links)} links on {source_name}")
+            print(f"Found {len(article_links)} UP links on {source_name}")
             for link in article_links:
                 if link in history:
                     continue
@@ -187,11 +190,6 @@ def main():
                 if not title or not re.search(LANG_PATTERN, title) or title in history:
                     continue
                 if not image_url or len(paragraphs) < 2:
-                    continue
-
-                # Ensure article is genuinely related to Amroha district
-                full_text_check = (title + " " + " ".join(paragraphs[:2])).lower()
-                if not any(loc in full_text_check for loc in amroha_filter):
                     continue
 
                 body_html = "".join([f"<p style='font-size:16px; line-height:1.8; margin-bottom:15px;'>{p}</p>" for p in paragraphs])
@@ -211,7 +209,7 @@ def main():
                 token = get_access_token()
                 post_url = publish_to_blogger(token, title, full_html, labels)
 
-                print(f"SUCCESS! Published from {source_name}: {post_url}")
+                print(f"SUCCESS! Published UP News from {source_name}: {post_url}")
                 history.append(link)
                 history.append(title)
                 save_history(history)
@@ -222,7 +220,7 @@ def main():
             print(f"Error ({source_name}): {e}")
 
     if not posted_something:
-        print("No new valid Amroha article posted in this run.")
+        print("No new valid UP article posted in this run.")
 
 if __name__ == "__main__":
     main()
