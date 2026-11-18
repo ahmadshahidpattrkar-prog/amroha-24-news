@@ -5,15 +5,16 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-# Amroha District Hindi News Sources (Split URLs to avoid browser stripping)
-NEWS_SOURCES = [
-    ("https://" + "://livehindustan.com" + "/uttar-pradesh/amroha/", "Live Hindustan"),
-    ("https://" + "://amarujala.com" + "/uttar-pradesh/amroha", "Amar Ujala")
+# Immune to browser URL-rewriting extensions
+PROTO = "http" + "s:" + "//"
+
+# Most Popular & Trusted Amroha District Hindi News Portals
+AMROHA_SOURCES = [
+    (PROTO + "://livehindustan.com", "Live Hindustan"),
+    (PROTO + "://amarujala.com", "Amar Ujala")
 ]
 
-# Hindi Unicode Pattern
 LANG_PATTERN = r'[\u0900-\u097F]'
-
 HISTORY_FILE = "posted_urls.json"
 
 HEADERS = {
@@ -36,7 +37,7 @@ def save_history(history):
         json.dump(history[-500:], f, ensure_ascii=False, indent=2)
 
 def get_access_token():
-    url = "https://" + "://googleapis.com" + "/token"
+    url = PROTO + "://googleapis.com"
     data = {
         "client_id": os.environ["CLIENT_ID"].strip(),
         "client_secret": os.environ["CLIENT_SECRET"].strip(),
@@ -51,18 +52,18 @@ def get_access_token():
 
 def detect_labels(title, body):
     text = (title + " " + body).lower()
-    labels = ["Featured", "Amroha", "अमरोहा न्यूज़"]
+    labels = ["Featured", "Amroha", "अमरोहा"]
     
     keywords = {
-        "Gajraula": ["गजरौला", "gajraula"],
+        "Gajraula": ["गजरौला", "gajraula", "तिगरी"],
         "Hasanpur": ["हसनपुर", "hasanpur"],
-        "Dhanaura": ["धनौरा", "मंडी धनौरा", "dhanaura"],
-        "Naugawan Sadat": ["नौगावां", "नौगांवा सादात", "naugawan"],
-        "Joya": ["जोया", "joya"],
-        "Crime": ["अपराध", "पुलिस", "गिरफ्तार", "चोरी", "हत्या", "हादसा", "मुठभेड़"],
-        "Politics": ["राजनीति", "विधायक", "सांसद", "चुनाव", "सरकार", "भाजपा", "सपा", "बसपा"],
-        "Education": ["शिक्षा", "परीक्षा", "स्कूल", "कॉलेज", "छात्र", "भर्ती"],
-        "Weather": ["मौसम", "बारिश", "सर्दी", "गर्मी", "गंगा"]
+        "Joya": ["जोया", "डिडौली", "joya"],
+        "Naugawan Sadat": ["नौगावां", "naugawan"],
+        "Crime": ["पुलिस", "गिरफ्तार", "चोरी", "हत्या", "मारपीट", "अपराध", "मुकदमा", "कोतवाली"],
+        "Politics": ["विधायक", "सांसद", "मुख्यमंत्री", "भाजपा", "सपा", "कांग्रेस", "बसपा", "चुनाव"],
+        "Administration": ["डीएम", "जिलाधिकारी", "एसपी", "प्रशासन", "तहसील", "नगर पालिका"],
+        "Education": ["स्कूल", "कॉलेज", "छात्र", "छात्रा", "परीक्षा", "शिक्षा"],
+        "Accident": ["हादसा", "टक्कर", "दुर्घटना", "घायल", "मौत"]
     }
     
     for label, words in keywords.items():
@@ -84,11 +85,10 @@ def get_article_links(section_url):
         txt = a.get_text(" ", strip=True)
         full_url = urljoin(section_url, href)
         
-        if len(txt) > 25 and re.search(LANG_PATTERN, txt):
-            if any(char.isdigit() for char in full_url) and full_url.startswith("http"):
-                if not any(ex in full_url.lower() for ex in ["/videos/", "/web-stories/", "/photos/"]):
-                    if full_url not in links:
-                        links.append(full_url)
+        if len(txt) > 20 and re.search(LANG_PATTERN, txt):
+            if any(char.isdigit() for char in full_url) and "/amroha/" in full_url.lower():
+                if full_url not in links:
+                    links.append(full_url)
     return links[:15]
 
 def extract_full_article(article_url):
@@ -107,6 +107,8 @@ def extract_full_article(article_url):
         if og_title and og_title.get("content"):
             title = og_title["content"].strip()
 
+    title = re.sub(r'^Amroha News:\s*', '', title, flags=re.IGNORECASE).strip()
+
     image_url = ""
     og_img = soup.find("meta", property="og:image")
     if og_img and og_img.get("content"):
@@ -116,9 +118,9 @@ def extract_full_article(article_url):
 
     paragraphs = []
     junk_phrases = [
-        "read also", "यह भी पढ़ें", "subscribe", "whatsapp",
-        "telegram", "copyright", "all rights reserved", "follow us",
-        "advertisement", "cookies", "download app", "लाइव हिन्दुस्तान", "अमर उजाला"
+        "ये भी पढ़ें", "read also", "subscribe", "whatsapp", "telegram",
+        "copyright", "all rights reserved", "follow us", "advertisement",
+        "cookies", "हिन्दुस्तान अमरोहा ग्रुप", "download app", "विस्तार"
     ]
     for p in soup.find_all("p"):
         txt = p.get_text(" ", strip=True)
@@ -131,7 +133,7 @@ def extract_full_article(article_url):
 
 def publish_to_blogger(token, title, html_content, labels):
     blog_id = os.environ["BLOG_ID"].strip()
-    api_url = "https://" + "://googleapis.com" + f"/blogger/v3/blogs/{blog_id}/posts/"
+    api_url = PROTO + f"://googleapis.com{blog_id}/posts/"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -153,12 +155,13 @@ def main():
     history = load_history()
     posted_something = False
 
-    for section_url, source_name in NEWS_SOURCES:
+    for section_url, source_name in AMROHA_SOURCES:
         if posted_something:
             break
         print(f"Scanning: {source_name}")
         try:
             article_links = get_article_links(section_url)
+            print(f"Found {len(article_links)} Amroha story links on {source_name}")
             for link in article_links:
                 if link in history:
                     continue
@@ -177,7 +180,7 @@ def main():
                 {body_html}
                 <hr style="margin:25px 0; border:0; border-top:1px solid #ddd;" />
                 <p style="font-size:14px; color:#555;">
-                    <strong>समाचार स्रोत (Original Source):</strong> 
+                    <strong>मूल समाचार स्रोत (Original Source):</strong> 
                     <a href="{link}" target="_blank" rel="nofollow noopener">{source_name} - पूरी खबर पढ़ें</a>
                 </p>
                 """
@@ -186,7 +189,7 @@ def main():
                 token = get_access_token()
                 post_url = publish_to_blogger(token, title, full_html, labels)
 
-                print(f"SUCCESS! Published: {post_url}")
+                print(f"SUCCESS! Published to Amroha 24 News: {post_url}")
                 history.append(link)
                 history.append(title)
                 save_history(history)
@@ -197,7 +200,7 @@ def main():
             print(f"Error ({source_name}): {e}")
 
     if not posted_something:
-        print("No new valid article posted in this run.")
+        print("No new valid Amroha article posted in this run.")
 
 if __name__ == "__main__":
     main()
